@@ -1,11 +1,11 @@
-from typing import List, Union
+from typing import Union
 import collections
 from array import array
 
 import backtrader as bt
 
 from backtrader_plotting.utils import get_strategy_label, get_data_obj
-from ._utils import convert_color, sanitize_source_name, get_bar_width, convert_linestyle, adapt_yranges
+from .utils import convert_color, sanitize_source_name, get_bar_width, convert_linestyle, adapt_yranges
 from backtrader_plotting.utils import convert_to_pandas, nanfilt
 
 from bokeh.models import Span
@@ -60,7 +60,7 @@ class Figure(object):
         self._start = start
         self._end = end
         self.figure = None
-        self._hover = None
+        self._hover: HoverTool = None
         self._coloridx = collections.defaultdict(lambda: -1)
         self._hover_line_set = False
         self.master_type = master_type
@@ -86,6 +86,7 @@ class Figure(object):
         else:
             self._hover.renderers = [ren]
 
+
     def _nextcolor(self, key: object=None) -> None:
         self._coloridx[key] += 1
         return self._coloridx[key]
@@ -95,7 +96,7 @@ class Figure(object):
 
     def _init_figure(self):
         # plot height will be set later
-        f = figure(tools=Figure._tools, plot_width=self._scheme.plot_width, logo=None, sizing_mode='scale_width', x_axis_type='linear')
+        f = figure(tools=Figure._tools, plot_width=self._scheme.plot_width, sizing_mode='scale_width', x_axis_type='linear')
         # TODO: backend webgl (output_backend="webgl") removed due to this bug:
         # https://github.com/bokeh/bokeh/issues/7568
 
@@ -153,7 +154,7 @@ class Figure(object):
         self.figure = f
 
     def plot(self, obj, strat_clk, master=None):
-        if isinstance(obj, bt.feeds.DataBase):
+        if isinstance(obj, bt.AbstractDataBase):
             self.plot_data(obj, master, strat_clk)
             height_set = self._scheme.plot_height_data
         elif isinstance(obj, bt.indicator.Indicator):
@@ -176,7 +177,7 @@ class Figure(object):
         """Returns a string listing all involved data feeds. Empty string if there is only a single feed in the mix"""
         names = []
         for x in ind.datas:
-            if isinstance(x, bt.DataBase):
+            if isinstance(x, bt.AbstractDataBase):
                 # for pandas feed _dataname is a DataFrame
                 # names.append(x._dataname)
                 names.append(x._name)
@@ -353,7 +354,7 @@ class Figure(object):
     def _source_id(source):
         return str(id(source))
 
-    def plot_data(self, data: bt.feeds.DataBase, master, strat_clk: array=None):
+    def plot_data(self, data: bt.AbstractDataBase, master, strat_clk: array=None):
         source_id = Figure._source_id(data)
         title = sanitize_source_name(data._name or '<NoName>')
         if len(data._env.strats) > 1:
@@ -418,7 +419,7 @@ class Figure(object):
         if self._scheme.volume and self._scheme.voloverlay:
             self.plot_volume(data, strat_clk, self._scheme.voltrans, True)
 
-    def plot_volume(self, data: bt.feeds.DataBase, strat_clk: array, alpha, extra_axis=False):
+    def plot_volume(self, data: bt.AbstractDataBase, strat_clk: array, alpha, extra_axis=False):
         source_id = Figure._source_id(data)
 
         df = convert_to_pandas(strat_clk, data, self._start, self._end)
